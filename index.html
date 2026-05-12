@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>文件转换器 · 云端极速</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #f5f7fb;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      width: 100%;
+      max-width: 440px;
+      margin-top: 10px;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .header h1 {
+      font-size: 28px;
+      font-weight: 700;
+      color: #1e293b;
+      margin-bottom: 6px;
+    }
+    .header p {
+      color: #64748b;
+      font-size: 14px;
+    }
+    .card {
+      background: white;
+      border-radius: 24px;
+      padding: 28px 20px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.03);
+      margin-bottom: 20px;
+    }
+    .upload-zone {
+      border: 2px dashed #cbd5e1;
+      border-radius: 16px;
+      padding: 36px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: #f8fafc;
+      margin-bottom: 20px;
+    }
+    .upload-zone:active { border-color: #3b82f6; background: #eff6ff; }
+    .upload-icon { font-size: 40px; margin-bottom: 10px; }
+    .upload-title { font-size: 16px; font-weight: 500; color: #1e293b; }
+    .upload-desc { font-size: 13px; color: #94a3b8; margin-top: 4px; }
+    
+    .format-selector {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .format-btn {
+      flex: 1;
+      background: #f1f5f9;
+      border: none;
+      padding: 12px 4px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #475569;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+    .format-btn.active {
+      background: #2563eb;
+      color: white;
+      box-shadow: 0 4px 10px rgba(37,99,235,0.25);
+    }
+    
+    .progress-container {
+      margin: 20px 0;
+      display: none;
+    }
+    .progress-bar {
+      height: 8px;
+      background: #e2e8f0;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      width: 0%;
+      height: 100%;
+      background: #2563eb;
+      transition: width 0.3s ease;
+    }
+    .progress-info {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 8px;
+      font-size: 13px;
+      color: #64748b;
+    }
+    
+    .convert-btn {
+      width: 100%;
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 16px;
+      border-radius: 14px;
+      font-size: 17px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .convert-btn:disabled { background: #94a3b8; }
+    .download-btn {
+      width: 100%;
+      background: #10b981;
+      color: white;
+      border: none;
+      padding: 16px;
+      border-radius: 14px;
+      font-size: 17px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 12px;
+      display: none;
+    }
+
+    .file-info {
+      margin: 12px 0;
+      font-size: 14px;
+      font-weight: 500;
+      color: #1e293b;
+      text-align: center;
+    }
+
+    .footer {
+      text-align: center;
+      font-size: 12px;
+      color: #94a3b8;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>📄 文件转换器</h1>
+    <p>高保真 · 表格公式保留 · 极速云端</p>
+  </div>
+
+  <div class="card">
+    <div class="upload-zone" id="uploadZone">
+      <div class="upload-icon">📂</div>
+      <div class="upload-title" id="uploadTitle">点击或拖拽上传文件</div>
+      <div class="upload-desc">支持 PDF、Word、PPT、图片</div>
+    </div>
+    <input type="file" id="fileInput" hidden accept=".pdf,.doc,.docx,.ppt,.pptx,image/*">
+
+    <div class="format-selector" id="formatRow">
+      <button class="format-btn active" data-format="docx">📝 Word</button>
+      <button class="format-btn" data-format="pdf">📄 PDF</button>
+      <button class="format-btn" data-format="txt">📃 TXT</button>
+    </div>
+
+    <div class="file-info" id="fileInfo" style="display:none;"></div>
+
+    <div class="progress-container" id="progressContainer">
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-info">
+        <span id="progressLabel">上传中...</span>
+        <span id="progressPercent">0%</span>
+      </div>
+    </div>
+
+    <button class="convert-btn" id="convertBtn" disabled>开始转换</button>
+    <button class="download-btn" id="downloadBtn">⬇️ 下载结果</button>
+  </div>
+  <div class="footer">使用 MinerU 云端引擎 · 每天免费5000页</div>
+</div>
+
+<script>
+  (function() {
+    // ---------- 配置 ----------
+    // 请部署后替换为你的 Vercel 函数地址
+    const PROXY_API = 'https://你的项目名.vercel.app/api/convert';
+    
+    // DOM 元素
+    const uploadZone = document.getElementById('uploadZone');
+    const fileInput = document.getElementById('fileInput');
+    const uploadTitle = document.getElementById('uploadTitle');
+    const convertBtn = document.getElementById('convertBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const progressContainer = document.getElementById('progressContainer');
+    const progressFill = document.getElementById('progressFill');
+    const progressLabel = document.getElementById('progressLabel');
+    const progressPercent = document.getElementById('progressPercent');
+    const fileInfoDiv = document.getElementById('fileInfo');
+    
+    // 状态变量
+    let selectedFile = null;
+    let targetFormat = 'docx';
+    let currentDownloadUrl = null;
+
+    // ---------- 工具函数 ----------
+    function formatFileSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+      return (bytes/(1024*1024)).toFixed(1) + ' MB';
+    }
+
+    function updateProgress(percent, label) {
+      progressFill.style.width = percent + '%';
+      progressPercent.textContent = percent + '%';
+      if (label) progressLabel.textContent = label;
+    }
+
+    function resetUI() {
+      progressContainer.style.display = 'none';
+      downloadBtn.style.display = 'none';
+      convertBtn.style.display = 'block';
+      updateProgress(0, '');
+    }
+
+    // ---------- 文件选择 ----------
+    uploadZone.addEventListener('click', () => fileInput.click());
+    
+    uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); });
+    uploadZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      handleFile(e.dataTransfer.files[0]);
+    });
+    
+    fileInput.addEventListener('change', (e) => {
+      handleFile(e.target.files[0]);
+    });
+
+    function handleFile(file) {
+      if (!file) return;
+      // 大小限制提示
+      if (file.size > 100 * 1024 * 1024) {
+        alert('文件不能超过 100MB');
+        return;
+      }
+      selectedFile = file;
+      uploadTitle.textContent = file.name;
+      fileInfoDiv.style.display = 'block';
+      fileInfoDiv.textContent = `已选文件: ${file.name} (${formatFileSize(file.size)})`;
+      convertBtn.disabled = false;
+      resetUI();
+    }
+
+    // ---------- 格式选择 ----------
+    document.querySelectorAll('.format-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.format-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        targetFormat = this.dataset.format;
+      });
+    });
+
+    // ---------- 核心：转换流程 ----------
+    convertBtn.addEventListener('click', async () => {
+      if (!selectedFile) return;
+      
+      convertBtn.disabled = true;
+      progressContainer.style.display = 'block';
+      downloadBtn.style.display = 'none';
+      
+      try {
+        // 第一步：上传文件到临时存储 (免费使用 file.io 或 transfer.sh)
+        updateProgress(10, '正在上传文件...');
+        const tempUrl = await uploadFileToTemp(selectedFile);
+        
+        // 第二步：通过代理 API 调用 MinerU 进行转换
+        updateProgress(30, '正在云端处理...');
+        const response = await fetch(PROXY_API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fileUrl: tempUrl,
+            fileName: selectedFile.name,
+            targetFormat: targetFormat
+          })
+        });
+        
+        const result = await response.json();
+        if (!result.success) throw new Error(result.message || '转换失败');
+        
+        // 第三步：显示下载按钮
+        currentDownloadUrl = result.downloadUrl;
+        updateProgress(100, '转换完成！');
+        convertBtn.style.display = 'none';
+        downloadBtn.style.display = 'block';
+        progressLabel.textContent = '已完成，点击下载';
+        
+      } catch (error) {
+        console.error(error);
+        updateProgress(0, `错误: ${error.message}`);
+        convertBtn.disabled = false;
+      }
+    });
+
+    // 上传文件到临时存储 (file.io)
+    async function uploadFileToTemp(file) {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await fetch('https://file.io', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await response.json();
+      if (!data.link) throw new Error('上传文件失败');
+      return data.link;
+    }
+
+    // 下载按钮
+    downloadBtn.addEventListener('click', () => {
+      if (currentDownloadUrl) {
+        window.open(currentDownloadUrl, '_blank');
+      }
+    });
+  })();
+</script>
+</body>
+</html>
